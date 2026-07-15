@@ -90,3 +90,57 @@ The receiver should immediately print the received frame's details.
   roles, not a client/server relationship like TCP.
 - Possible extensions: continuous receive loop, CAN ID filtering,
   multiple simultaneous senders.
+
+## Running the TCP Server as a systemd Service (Auto-start on Boot)
+
+The TCP server can be installed as a `systemd` service so it starts
+automatically on boot and restarts if it crashes.
+
+### 1. Build the binary first
+```bash
+make
+```
+The service depends on the compiled `server` binary existing at a fixed
+path — if you ever run `make clean` or clone the repo fresh, rebuild
+before (re)starting the service, or it will fail with `status=203/EXEC`.
+
+### 2. Create the service file
+```bash
+sudo nano /etc/systemd/system/TCP_demo.service
+```
+```ini
+[Unit]
+Description=TCP Demo Server
+After=network.target
+
+[Service]
+ExecStart=/absolute/path/to/CAN_TCP_Socket_Demo/server 127.0.0.1 5555
+WorkingDirectory=/absolute/path/to/CAN_TCP_Socket_Demo
+Restart=always
+User=your_username
+Group=your_username
+
+[Install]
+WantedBy=multi-user.target
+```
+Replace the paths and username with your own (`pwd` and `whoami` to check).
+
+### 3. Enable and start it
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable TCP_demo
+sudo systemctl start TCP_demo
+```
+
+### 4. Check status / logs
+```bash
+sudo systemctl status TCP_demo
+sudo journalctl -u TCP_demo
+```
+
+### Useful commands
+```bash
+sudo systemctl restart TCP_demo   # after rebuilding the binary
+sudo systemctl stop TCP_demo
+sudo systemctl disable TCP_demo   # remove auto-start on boot
+```

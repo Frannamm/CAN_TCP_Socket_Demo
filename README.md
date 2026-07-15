@@ -1,58 +1,92 @@
-# TCP Client-Server Demo
-A simple TCP client-server implementation in C using the sockets API.
-This project demonstrates TCP communication between a client and server,
-including socket creation, connecting, sending/receiving data, handling
-multiple simultaneous clients using `fork()`, and detecting client
-connect/disconnect events.
+# CAN & TCP Socket Programming Demos
 
-## Files
-- `TCP_server.c` — Sets up a server socket, listens for incoming connections,
-  and forks a new child process to handle each connected client. Each child:
-  - Prints the connecting client's IP and port
-  - Prints its own process ID (used as a client identifier)
-  - Sends a greeting message to the client
-  - Receives data from the client in a loop, printing each message and its
-    length
-  - Detects and prints when the client disconnects or an error occurs
-- `TCP_client.c` — Connects to the server (given an IP address, port, and a
-  data string), receives the server's greeting, sends its own data, and
-  prints:
-  - The data received from the server
-  - The data it sent, and its length
-  - Its own process ID
-- `Makefile` — Builds both `server` and `client` binaries.
+A collection of C socket programming demos: a TCP client-server, and a
+CAN bus client-server using SocketCAN (with a virtual CAN interface for
+testing without hardware).
 
-## How to Compile
+## Contents
+- `TCP_server.c` / `TCP_client.c` — TCP client-server demo (see below)
+- `can_sender.c` / `can_receiver.c` — CAN bus sender/receiver demo (see below)
+- `Makefile` — builds all four binaries
+
+## Build
 ```bash
 make
 ```
-This builds two binaries: `server` and `client`.
+Builds `server`, `client`, `can_sender`, `can_receiver`.
 
-To remove the compiled binaries:
 ```bash
 make clean
 ```
+Removes all compiled binaries.
 
-## How to Run
-The server takes an IP address and port. The client takes an IP address,
-port, and a message to send.
+---
 
-1. Start the server first:
+## TCP Client-Server
+
+A TCP client-server implementation demonstrating socket creation,
+connecting, sending/receiving data, multi-client handling via `fork()`,
+and connect/disconnect detection.
+
+### Files
+- `TCP_server.c` — Sets up a server socket, listens for incoming
+  connections, and forks a new child process to handle each connected
+  client. Each child:
+  - Prints the connecting client's IP and port
+  - Prints its own process ID (used as a client identifier)
+  - Sends a greeting message to the client
+  - Receives data from the client in a loop, printing each message and
+    its length
+  - Detects and prints when the client disconnects or an error occurs
+- `TCP_client.c` — Connects to the server (given an IP address, port,
+  and a data string), receives the server's greeting, sends its own
+  data, and prints the data received, the data sent (and its length),
+  and its own process ID.
+
+### Run
 ```bash
 ./server 127.0.0.1 5555
-```
-
-2. In a separate terminal, run the client with a message to send:
-```bash
 ./client 127.0.0.1 5555 "hello server"
 ```
+You can run multiple clients against the same server to see the
+multi-client handling in action.
 
-You can run multiple clients (in separate terminals) against the same
-running server to see the multi-client handling in action — each client
-is served by its own forked child process on the server.
+---
+
+## CAN Sender/Receiver
+
+A SocketCAN demo showing how to send and receive raw CAN frames over a
+CAN interface (tested using a virtual interface, `vcan0`).
+
+### Files
+- `can_receiver.c` — Binds to a CAN interface (given as a CLI argument)
+  and reads a CAN frame, printing its ID, data length, and data bytes.
+- `can_sender.c` — Binds to a CAN interface and sends a CAN frame with
+  a CAN ID and data bytes provided as CLI arguments (in hex).
+
+### Setting up a virtual CAN interface (for testing without hardware)
+```bash
+sudo modprobe vcan
+sudo ip link add dev vcan0 type vcan
+sudo ip link set up vcan0
+```
+Note: virtual CAN interfaces do not persist across reboots — you'll
+need to recreate `vcan0` after restarting your machine.
+
+### Run
+```bash
+./can_receiver vcan0
+```
+In a separate terminal:
+```bash
+./can_sender vcan0 123 DEADBEEF
+```
+This sends a frame with CAN ID `0x123` and data bytes `DE AD BE EF`.
+The receiver should immediately print the received frame's details.
 
 ## Notes
-- Client and server process IDs are independent and will not match — each
-  is a separate, unrelated process on its own machine.
-- Possible extensions: bidirectional continuous messaging, more robust
-  error handling, and configurable buffer sizes.
+- CAN is a broadcast protocol — there's no `connect()`, and every node
+  on the bus sees every frame. "Sender" and "receiver" here are just
+  roles, not a client/server relationship like TCP.
+- Possible extensions: continuous receive loop, CAN ID filtering,
+  multiple simultaneous senders.

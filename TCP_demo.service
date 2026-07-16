@@ -1,0 +1,13 @@
+[Unit]
+Description=TCP Demo Server
+After=network.target
+
+[Service]
+ExecStart=/home/dali/Documents/CAN_TCP_Socket_Demo/server 127.0.0.1 5555
+WorkingDirectory=/home/dali/Documents/CAN_TCP_Socket_Demo
+Restart=always
+User=dali
+Group=dali
+
+[Install]
+WantedBy=multi-user.target

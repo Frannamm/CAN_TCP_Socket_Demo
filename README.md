@@ -13,7 +13,7 @@ testing without hardware).
 ```bash
 make
 ```
-Builds `server`, `client`, `can_sender`, `can_receiver`.
+Builds `server`, `client`, `sender`, `receiver`.
 
 ```bash
 make clean
@@ -75,11 +75,11 @@ need to recreate `vcan0` after restarting your machine.
 
 ### Run
 ```bash
-./can_receiver vcan0
+./receiver vcan0
 ```
 In a separate terminal:
 ```bash
-./can_sender vcan0 123 DEADBEEF
+./sender vcan0 123 DEADBEEF
 ```
 This sends a frame with CAN ID `0x123` and data bytes `DE AD BE EF`.
 The receiver should immediately print the received frame's details.

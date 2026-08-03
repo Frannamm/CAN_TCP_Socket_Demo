@@ -6,3 +6,5 @@ client
 server
 iso14229_uds_practice/examples/linux_client/client
 iso14229_uds_practice/examples/linux_server/server
+client
+server

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libiso14229.a CMakeFiles/iso14229.dir/home/frannam/CAN_TCP_Socket_Demo/iso14229_uds_practice/iso14229.c.o
-/usr/bin/ranlib libiso14229.a

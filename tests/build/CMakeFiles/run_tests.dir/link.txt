@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/run_tests.dir/test_main.cpp.o -o run_tests  lib/libgtest_main.a libiso14229.a lib/libgtest.a -lpthread 

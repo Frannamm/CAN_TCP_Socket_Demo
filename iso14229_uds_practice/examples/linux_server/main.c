@@ -24,43 +24,59 @@ void sigint_handler(int signum) {
 static uint8_t stored_value[3] = {0};
 
 static UDSErr_t fn(UDSServer_t *srv, UDSEvent_t ev, void *arg) {
-    switch (ev) {
-    case UDS_EVT_ReadDataByIdent: {
-    UDSRDBIArgs_t *r = (UDSRDBIArgs_t *)arg;
-
-    if (r->dataId == 0xF190) {
-        static const uint8_t value[] = {0xAA, 0xBB, 0xCC};
-        r->copy(srv, value, sizeof(value));
-        return UDS_PositiveResponse;
-    }
-
-    if (r->dataId == 0xDEAD) {
-        r->copy(srv, stored_value, sizeof(stored_value));
-        return UDS_PositiveResponse;
-    }
-
-    return UDS_NRC_RequestOutOfRange;
-}
-
-case UDS_EVT_WriteDataByIdent: {
-    UDSWDBIArgs_t *w = (UDSWDBIArgs_t *)arg;
-
-    if (w->dataId == 0xDEAD) {
-        if (w->len != sizeof(stored_value)) {
-            return UDS_NRC_IncorrectMessageLengthOrInvalidFormat;
+switch (ev) {
+    
+    case UDS_EVT_DiagSessCtrl: {
+        UDSDiagSessCtrlArgs_t *d = (UDSDiagSessCtrlArgs_t *)arg;
+        if (d->type == UDS_LEV_DS_EXTDS) {
+            return UDS_PositiveResponse;
+        } else {
+            return UDS_NRC_SubFunctionNotSupported;
         }
-        memcpy(stored_value, w->data, w->len);
+    }
+
+    case UDS_EVT_SessionTimeout: {
+        printf("Session timed out, reverted to default session.\n");
         return UDS_PositiveResponse;
     }
 
-    return UDS_NRC_RequestOutOfRange;
-}
+    case UDS_EVT_ReadDataByIdent: {
+        UDSRDBIArgs_t *r = (UDSRDBIArgs_t *)arg;
+
+        if (r->dataId == 0xF190) {
+            static const uint8_t value[] = {0xAA, 0xBB, 0xCC};
+            r->copy(srv, value, sizeof(value));
+            return UDS_PositiveResponse;
+        }
+
+        if (r->dataId == 0xDEAD) {
+            r->copy(srv, stored_value, sizeof(stored_value));
+            return UDS_PositiveResponse;
+        }
+
+        return UDS_NRC_RequestOutOfRange;
+    }
+
+    case UDS_EVT_WriteDataByIdent: {
+        UDSWDBIArgs_t *w = (UDSWDBIArgs_t *)arg;
+
+        if (w->dataId == 0xDEAD) {
+            if (w->len != sizeof(stored_value)) {
+                return UDS_NRC_IncorrectMessageLengthOrInvalidFormat;
+            }
+            memcpy(stored_value, w->data, w->len);
+            return UDS_PositiveResponse;
+        }
+
+        return UDS_NRC_RequestOutOfRange;
+    }
 
     default:
         printf("Unhandled event: %d, TA_Type: %d\n", ev, srv->r.info.A_TA_Type);
         return UDS_NRC_ServiceNotSupported;
     }
 }
+
 
 int main(int ac, char **av) {
     struct sigaction sa;

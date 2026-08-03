@@ -1,0 +1,7 @@
+add_test([=[SmokeTest.BasicAssertionsWork]=]  /home/frannam/CAN_TCP_Socket_Demo/tests/build/run_tests [==[--gtest_filter=SmokeTest.BasicAssertionsWork]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[SmokeTest.BasicAssertionsWork]=]  PROPERTIES WORKING_DIRECTORY /home/frannam/CAN_TCP_Socket_Demo/tests/build SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==])
+add_test([=[UDSErrToStr.ReturnsCorrectStringForKnownError]=]  /home/frannam/CAN_TCP_Socket_Demo/tests/build/run_tests [==[--gtest_filter=UDSErrToStr.ReturnsCorrectStringForKnownError]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[UDSErrToStr.ReturnsCorrectStringForKnownError]=]  PROPERTIES WORKING_DIRECTORY /home/frannam/CAN_TCP_Socket_Demo/tests/build SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==])
+add_test([=[UDSErrToStr.ReturnsUnknownForInvalidValue]=]  /home/frannam/CAN_TCP_Socket_Demo/tests/build/run_tests [==[--gtest_filter=UDSErrToStr.ReturnsUnknownForInvalidValue]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[UDSErrToStr.ReturnsUnknownForInvalidValue]=]  PROPERTIES WORKING_DIRECTORY /home/frannam/CAN_TCP_Socket_Demo/tests/build SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==])
+set(  run_tests_TESTS SmokeTest.BasicAssertionsWork UDSErrToStr.ReturnsCorrectStringForKnownError UDSErrToStr.ReturnsUnknownForInvalidValue)

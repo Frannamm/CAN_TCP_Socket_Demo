@@ -1,0 +1,4 @@
+SmokeTest.BasicAssertionsWork 1 0.00334542
+UDSErrToStr.ReturnsCorrectStringForKnownError 1 0.00199387
+UDSErrToStr.ReturnsUnknownForInvalidValue 1 0.0392018
+---

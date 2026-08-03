@@ -10,6 +10,8 @@
 #define DID_TEST_SCRATCH   0xDEAD
 #define DID_VIN            0xF190
 
+#define MAX_RETRIES 3
+
 static UDSClient_t client;
 static UDSTpIsoTpSock_t tp;
 
@@ -22,6 +24,22 @@ typedef enum {
 } AppState_t;
 
 static AppState_t app_state = STATE_INIT;
+static int retries_left = MAX_RETRIES;
+
+static void send_session_ctrl(UDSClient_t *client) {
+    printf("Sending Diagnostic Session Control (extended session)...\n");
+    UDSSendDiagSessCtrl(client, UDS_LEV_DS_EXTDS);
+    app_state = STATE_AWAIT_SESSION;
+    retries_left = MAX_RETRIES;
+}
+
+static void send_rdbi(UDSClient_t *client) {
+    printf("Sending RDBI request...\n");
+    uint16_t did = DID_TEST_SCRATCH;
+    UDSSendRDBI(client, &did, 1);
+    app_state = STATE_AWAIT_RDBI;
+    retries_left = MAX_RETRIES;
+}
 
 static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
     switch (ev) {
@@ -33,10 +51,8 @@ static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
             printf("\n");
 
             if (app_state == STATE_AWAIT_SESSION) {
-                printf("Session control confirmed. Sending RDBI request...\n");
-                uint16_t did = DID_TEST_SCRATCH;
-                UDSSendRDBI(client, &did, 1);
-                app_state = STATE_AWAIT_RDBI;
+                printf("Session control confirmed.\n");
+                send_rdbi(client);
             } else if (app_state == STATE_AWAIT_RDBI) {
                 printf("RDBI complete.\n");
                 app_state = STATE_DONE;
@@ -46,7 +62,20 @@ static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
         case UDS_EVT_Err: {
             UDSErr_t *err = (UDSErr_t *)arg;
             printf("Error: %s\n", UDSErrToStr(*err));
-            app_state = STATE_ERROR;
+
+            if (*err == UDS_ERR_TIMEOUT && retries_left > 0) {
+                retries_left--;
+                printf("Timeout - retrying (%d retries left)...\n", retries_left);
+                if (app_state == STATE_AWAIT_SESSION) {
+                    UDSSendDiagSessCtrl(client, UDS_LEV_DS_EXTDS);
+                } else if (app_state == STATE_AWAIT_RDBI) {
+                    uint16_t did = DID_TEST_SCRATCH;
+                    UDSSendRDBI(client, &did, 1);
+                }
+            } else {
+                printf("Giving up.\n");
+                app_state = STATE_ERROR;
+            }
             break;
         }
 
@@ -75,14 +104,12 @@ int main(int ac, char **av) {
     client.tp = (UDSTp_t *)&tp;
     client.fn = fn;
 
-    printf("Sending Diagnostic Session Control (extended session)...\n");
-    UDSSendDiagSessCtrl(&client, UDS_LEV_DS_EXTDS);
-    app_state = STATE_AWAIT_SESSION;
+    send_session_ctrl(&client);
 
     while (app_state != STATE_DONE && app_state != STATE_ERROR) {
         UDSClientPoll(&client);
     }
 
     printf("Client exiting\n");
-    return 0;
+    return app_state == STATE_ERROR ? -1 : 0;
 }

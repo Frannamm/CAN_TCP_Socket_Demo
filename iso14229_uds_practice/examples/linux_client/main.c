@@ -3,16 +3,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SERVER_PHYS_ADDR   0x7E0  // server's physical (1:1) receive address. (0x7E0–0x7E7: physical request IDs, one range slot per ECU (tester → ECU #0 through ECU #7))
-#define CLIENT_PHYS_ADDR   0x7E8  // this client's physical (1:1) receive address. (0x7E8–0x7EF: physical response IDs, matching 1:1 with the request range (ECU #0 responds on 0x7E8, ECU #1 on 0x7E9, etc. — always request_id + 8)))
-#define FUNCTIONAL_ADDR    0x7DF  // broadcast/functional address (all servers listen here). (0x7DF: the functional (broadcast) request ID)
+#define SERVER_PHYS_ADDR   0x7E0
+#define CLIENT_PHYS_ADDR   0x7E8
+#define FUNCTIONAL_ADDR    0x7DF
 
-#define DID_TEST_SCRATCH   0xDEAD // custom scratch DID: readable/writable test value
-#define DID_VIN            0xF190 // standard UDS DID: Vehicle Identification Number
+#define DID_TEST_SCRATCH   0xDEAD
+#define DID_VIN            0xF190
 
 static UDSClient_t client;
 static UDSTpIsoTpSock_t tp;
-static bool done = false;
+
+typedef enum {
+    STATE_INIT,
+    STATE_AWAIT_SESSION,
+    STATE_AWAIT_RDBI,
+    STATE_DONE,
+    STATE_ERROR
+} AppState_t;
+
+static AppState_t app_state = STATE_INIT;
 
 static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
     switch (ev) {
@@ -22,13 +31,22 @@ static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
                 printf("%02X ", client->recv_buf[i]);
             }
             printf("\n");
-            done = true;
+
+            if (app_state == STATE_AWAIT_SESSION) {
+                printf("Session control confirmed. Sending RDBI request...\n");
+                uint16_t did = DID_TEST_SCRATCH;
+                UDSSendRDBI(client, &did, 1);
+                app_state = STATE_AWAIT_RDBI;
+            } else if (app_state == STATE_AWAIT_RDBI) {
+                printf("RDBI complete.\n");
+                app_state = STATE_DONE;
+            }
             break;
 
         case UDS_EVT_Err: {
             UDSErr_t *err = (UDSErr_t *)arg;
             printf("Error: %s\n", UDSErrToStr(*err));
-            done = true;
+            app_state = STATE_ERROR;
             break;
         }
 
@@ -57,16 +75,14 @@ int main(int ac, char **av) {
     client.tp = (UDSTp_t *)&tp;
     client.fn = fn;
 
-    uint16_t did = DID_TEST_SCRATCH;
-    printf("Sending RDBI request for DID 0x%04X...\n", did);
-    UDSSendRDBI(&client, &did, 1);
+    printf("Sending Diagnostic Session Control (extended session)...\n");
+    UDSSendDiagSessCtrl(&client, UDS_LEV_DS_EXTDS);
+    app_state = STATE_AWAIT_SESSION;
 
-    while (!done) {
+    while (app_state != STATE_DONE && app_state != STATE_ERROR) {
         UDSClientPoll(&client);
     }
 
     printf("Client exiting\n");
     return 0;
 }
-
-    

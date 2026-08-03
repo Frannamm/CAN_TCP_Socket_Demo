@@ -24,8 +24,8 @@ void sigint_handler(int signum) {
 static uint8_t stored_value[3] = {0};
 
 static UDSErr_t fn(UDSServer_t *srv, UDSEvent_t ev, void *arg) {
-switch (ev) {
-    
+    switch (ev) {
+
     case UDS_EVT_DiagSessCtrl: {
         UDSDiagSessCtrlArgs_t *d = (UDSDiagSessCtrlArgs_t *)arg;
         if (d->type == UDS_LEV_DS_EXTDS) {
@@ -77,7 +77,6 @@ switch (ev) {
     }
 }
 
-
 int main(int ac, char **av) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -92,6 +91,7 @@ int main(int ac, char **av) {
 
     if (UDSServerInit(&srv)) {
         fprintf(stderr, "UDSServerInit failed\n");
+        exit(-1);
     }
 
     srv.tp = (UDSTp_t *)&tp;

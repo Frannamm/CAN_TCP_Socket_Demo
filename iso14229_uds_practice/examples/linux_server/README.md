@@ -12,14 +12,15 @@ built-in ISO-TP support via SocketCAN. It handles:
   `UDS_NRC_SubFunctionNotSupported`
 - **SessionTimeout** — acknowledges automatic reversion to the default
   session
-- **ReadDataByIdentifier (0x22)** and **WriteDataByIdentifier (0x2E)** for
-  two test DIDs: `0xF190` (read-only, fixed VIN-like value) and `0xDEAD`
-  (read/write scratch value)
+- **ReadDataByIdentifier (0x22)** for several test DIDs (see `dids.h`),
+  including two DIDs that deliberately demonstrate ISO 14229's P2/P2*
+  timing mechanism via NRC 0x78 (ResponsePending)
+- **WriteDataByIdentifier (0x2E)** for the scratch DID (`0xDEAD`)
 
 ## Files
 
-- `main.c` — server implementation, including session control, timeout,
-  and RDBI/WDBI handlers
+- `main.c` — server implementation
+- `dids.h` — shared DID definitions (also used by `../linux_client`)
 
 ## Building
 
@@ -40,9 +41,19 @@ sudo ip link set up vcan0
 ./server vcan0
 ```
 
-## Testing manually
+## Available test DIDs
 
-In another terminal:
+| DID | Behavior |
+|---|---|
+| F190 | Fixed VIN-like value, read-only |
+| DEAD | Read/write scratch value |
+| F18C | Fixed ECU serial |
+| F18D | Fixed ECU HW version |
+| F18E | Fixed ECU SW version |
+| DEAF | Responds with NRC 0x78 (pending) twice, then real data (~3s total) |
+| BEEF | Responds with NRC 0x78 (pending) four times, then real data (~6s total) |
+
+## Testing manually
 
 ```bash
 # Request Extended Diagnostic Session
@@ -51,21 +62,28 @@ cansend vcan0 7E0#02.10.03
 # Read DID 0xF190
 cansend vcan0 7E0#03.22.F1.90
 
-# Read DID 0xDEAD
-cansend vcan0 7E0#03.22.DE.AD
-
-# Write 3 bytes to DID 0xDEAD
-cansend vcan0 7E0#06.2E.DE.AD.11.22.33
+# Trigger the slow-response (0x78 pending) demonstration
+cansend vcan0 7E0#03.22.DE.AF
 
 # Watch traffic
 candump vcan0
 ```
 
+## Notes on timing
+
+P2/P2* defaults come from the library:
+`UDS_SERVER_DEFAULT_P2_MS=50`, `UDS_SERVER_DEFAULT_P2_STAR_MS=5000`. The
+minimum interval between consecutive 0x78 responses is `0.3 * p2_star_ms`
+(1500ms with defaults), per ISO14229-2:2013 Table 4 footnote b. This is
+handled internally by the library — the server's event handler only needs
+to return `UDS_NRC_RequestCorrectlyReceived_ResponsePending` when it isn't
+ready, and the library manages re-invocation and timing automatically.
+
 ## Known limitations
 
-- Does not currently override P2/P2* timing values in its
+- Does not currently override P2/P2* values per-session in its
   `DiagSessCtrl` response (fields available in `UDSDiagSessCtrlArgs_t`
-  but unused)
+  but left at server defaults)
 
 ## Requirements
 

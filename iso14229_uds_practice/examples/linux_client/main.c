@@ -94,17 +94,38 @@ static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
             UDSErr_t *err = (UDSErr_t *)arg;
             printf("Error: %s\n", UDSErrToStr(*err));
 
-            if (*err == UDS_ERR_TIMEOUT && retries_left > 0) {
-                retries_left--;
-                printf("Timeout - retrying (%d retries left)...\n", retries_left);
-                if (app_state == STATE_AWAIT_SESSION) {
-                    pending_action = ACTION_SEND_SESSION;
-                } else if (app_state == STATE_AWAIT_RDBI) {
-                    pending_action = ACTION_SEND_RDBI;
-                }
-            } else {
-                printf("Giving up.\n");
-                app_state = STATE_ERROR;
+            switch (*err) {
+                case UDS_ERR_TIMEOUT:
+                    if (retries_left > 0) {
+                        retries_left--;
+                        printf("Timeout - retrying (%d retries left)...\n", retries_left);
+                        if (app_state == STATE_AWAIT_SESSION) pending_action = ACTION_SEND_SESSION;
+                        else if (app_state == STATE_AWAIT_RDBI) pending_action = ACTION_SEND_RDBI;
+                    } else {
+                        printf("Giving up after max retries.\n");
+                        app_state = STATE_ERROR;
+                    }
+                    break;
+
+                case UDS_NRC_RequestOutOfRange:
+                    printf("DID not supported by this server.\n");
+                    app_state = STATE_ERROR;
+                    break;
+
+                case UDS_NRC_SubFunctionNotSupported:
+                    printf("Requested session type not supported.\n");
+                    app_state = STATE_ERROR;
+                    break;
+
+                case UDS_NRC_IncorrectMessageLengthOrInvalidFormat:
+                    printf("Request malformed (wrong length/format).\n");
+                    app_state = STATE_ERROR;
+                    break;
+
+                default:
+                    printf("Unhandled error/NRC, giving up.\n");
+                    app_state = STATE_ERROR;
+                    break;
             }
             break;
         }
@@ -112,6 +133,7 @@ static int fn(UDSClient_t *client, UDSEvent_t ev, void *arg) {
         default:
             break;
     }
+
     return 0;
 }
 

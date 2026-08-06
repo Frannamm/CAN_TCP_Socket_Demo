@@ -11,6 +11,8 @@
 #include <sys/types.h>
 #include <time.h>
 
+#include "dids.h"
+
 static UDSServer_t srv;
 static UDSTpIsoTpSock_t tp;
 static bool done = false;
@@ -43,16 +45,65 @@ static UDSErr_t fn(UDSServer_t *srv, UDSEvent_t ev, void *arg) {
     case UDS_EVT_ReadDataByIdent: {
         UDSRDBIArgs_t *r = (UDSRDBIArgs_t *)arg;
 
-        if (r->dataId == 0xF190) {
+        if (r->dataId == DID_VIN) {
             static const uint8_t value[] = {0xAA, 0xBB, 0xCC};
             r->copy(srv, value, sizeof(value));
             return UDS_PositiveResponse;
         }
 
-        if (r->dataId == 0xDEAD) {
+        if (r->dataId == DID_TEST_SCRATCH) {
             r->copy(srv, stored_value, sizeof(stored_value));
             return UDS_PositiveResponse;
         }
+
+        if (r->dataId == DID_ECU_SERIAL) {
+            static const uint8_t value[] = {'S', 'N', '0', '0', '1'};
+            r->copy(srv, value, sizeof(value));
+            return UDS_PositiveResponse;
+        }
+
+        if (r->dataId == DID_ECU_HW_VER) {
+            static const uint8_t value[] = {'H', 'W', '1', '.', '0'};
+            r->copy(srv, value, sizeof(value));
+            return UDS_PositiveResponse;
+        }
+
+        if (r->dataId == DID_ECU_SW_VER) {
+            static const uint8_t value[] = {'S', 'W', '1', '.', '0'};
+            r->copy(srv, value, sizeof(value));
+            return UDS_PositiveResponse;
+        }
+
+        if (r->dataId == DID_SLOW_SCRATCH) {
+            static int pending_count = 0;
+            pending_count++;
+
+            if (pending_count < 3) {
+                printf("DID 0x%04X: still processing(%d), sending 0x78 pending...\n", r->dataId, pending_count);
+                return UDS_NRC_RequestCorrectlyReceived_ResponsePending;
+            } else {
+                pending_count = 0;
+                static const uint8_t value[] = {0x12, 0x34, 0x56};
+                r->copy(srv, value, sizeof(value));
+                return UDS_PositiveResponse;
+            }
+        }
+
+        if (r->dataId == DID_SLOW_SCRATCH2) {
+            static int pending_count = 0;
+            pending_count++;
+
+            if (pending_count < 5) {
+                printf("DID 0x%04X: still processing(%d), sending 0x78 pending...\n", r->dataId, pending_count);
+                return UDS_NRC_RequestCorrectlyReceived_ResponsePending;
+            } else {
+                pending_count = 0;
+                static const uint8_t value[] = {0xAB, 0xCD, 0xEF};
+                r->copy(srv, value, sizeof(value));
+                return UDS_PositiveResponse;
+            }
+        }
+
 
         return UDS_NRC_RequestOutOfRange;
     }
@@ -60,7 +111,7 @@ static UDSErr_t fn(UDSServer_t *srv, UDSEvent_t ev, void *arg) {
     case UDS_EVT_WriteDataByIdent: {
         UDSWDBIArgs_t *w = (UDSWDBIArgs_t *)arg;
 
-        if (w->dataId == 0xDEAD) {
+        if (w->dataId == DID_TEST_SCRATCH) {
             if (w->len != sizeof(stored_value)) {
                 return UDS_NRC_IncorrectMessageLengthOrInvalidFormat;
             }
